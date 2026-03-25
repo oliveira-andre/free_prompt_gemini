@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot Free WebAI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/markdown@0.5.0/lib/markdown.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              display: ['Syne', 'sans-serif'],
+              mono: ['JetBrains Mono', 'monospace'],
+            },
+            colors: {
+              ink: {
+                950: '#06080f',
+                900: '#0b0f1c',
+                800: '#111827',
+                700: '#1c2333',
+              },
+              amber: {
+                300: '#fcd34d',
+                400: '#fbbf24',
+                500: '#f59e0b',
+              },
+              teal: {
+                400: '#2dd4bf',
+                500: '#14b8a6',
+              }
+            },
+            animation: {
+              'fade-in': 'fadeIn 0.6s ease forwards',
+              'slide-up': 'slideUp 0.5s ease forwards',
+              'pulse-dot': 'pulseDot 1.4s ease-in-out infinite',
+              'glow': 'glow 3s ease-in-out infinite',
+            },
+            keyframes: {
+              fadeIn: { from: { opacity: '0' }, to: { opacity: '1' } },
+              slideUp: { from: { opacity: '0', transform: 'translateY(16px)' }, to: { opacity: '1', transform: 'translateY(0)' } },
+              pulseDot: { '0%,80%,100%': { transform: 'scale(0)', opacity: '0.3' }, '40%': { transform: 'scale(1)', opacity: '1' } },
+              glow: { '0%,100%': { boxShadow: '0 0 20px rgba(59,130,246,0.15)' }, '50%': { boxShadow: '0 0 40px rgba(59,130,246,0.35)' } },
+            }
+          }
+        }
+      }
+    </script>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body class="min-h-screen relative" style="background-color: #06080f; color: #f1f5f9;">
+
+  <div class="relative z-10 max-w-3xl mx-auto px-4 py-10 md:py-16 space-y-8 animate-fade-in">
+
+    <!-- Header -->
+    <header class="space-y-3">
+      <div class="flex items-center gap-3">
+        <!-- Icon -->
+        <div class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 animate-glow" style="background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3);">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
+            <path d="M8 12h8M12 8v8"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-xl font-display font-800 tracking-tight" style="font-family: 'Syne', sans-serif; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
+            WebAI <span style="color: #60a5fa;">Chatbot</span>
+          </h1>
+          <p class="text-xs font-semibold" style="color: #94a3b8; font-size: 0.7rem; letter-spacing: 0.06em;">FREE · OPEN · INTELLIGENT</p>
+        </div>
+      </div>
+      <!-- Accent line -->
+      <div class="h-px w-full accent-line rounded-full opacity-40"></div>
+    </header>
+
+    <!-- Form Card -->
+    <form id="question-form" class="space-y-6">
+
+      <!-- Parameters Row -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+        <!-- Temperature -->
+        <div class="param-card glass-card rounded-xl p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="label-tag">Temperature</span>
+            <span id="temp-value" class="text-xs font-mono px-2 py-0.5 rounded font-bold" style="background: rgba(59,130,246,0.15); color: #93c5fd; border: 1px solid rgba(59,130,246,0.3); min-width: 2.5rem; text-align: center;"></span>
+          </div>
+          <input type="range" id="temperature" name="temperature" min="0" max="2" step="0.1" value="1.0" class="w-full">
+          <p class="text-xs leading-relaxed font-medium" style="color: #94a3b8;">Controla a criatividade das respostas. Baixo = focado · Alto = criativo</p>
+        </div>
+
+        <!-- Top K -->
+        <div class="param-card glass-card rounded-xl p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="label-tag">Top K</span>
+            <span id="topk-value" class="text-xs font-mono px-2 py-0.5 rounded font-bold" style="background: rgba(129,140,248,0.12); color: #a5b4fc; border: 1px solid rgba(129,140,248,0.25); min-width: 2.5rem; text-align: center;"></span>
+          </div>
+          <input type="number" id="topK" name="topK" min="1" max="100" value="40"
+            class="w-full rounded-lg px-3 py-2 text-sm font-mono font-semibold"
+            style="color: #f1f5f9;">
+          <p class="text-xs leading-relaxed font-medium" style="color: #94a3b8;">Limita às K palavras mais prováveis. Menor = mais previsível</p>
+        </div>
+      </div>
+
+      <!-- Textarea -->
+      <div class="space-y-2">
+        <label class="label-tag block" for="question">Mensagem</label>
+        <textarea
+          name="question"
+          id="question"
+          rows="5"
+          placeholder="Digite sua pergunta aqui..."
+          class="w-full rounded-xl px-4 py-3 text-sm resize-none font-mono transition-all duration-200"
+          style="color: #f8fafc; min-height: 130px; font-weight: 500;"
+        ></textarea>
+      </div>
+
+      <!-- Submit Button -->
+      <button
+        type="submit"
+        id="ask-button"
+        class="w-full rounded-xl py-3.5 text-sm font-display font-700 tracking-wider transition-all duration-200 flex items-center justify-center gap-2"
+        style="font-family: 'Syne', sans-serif; font-weight: 700; letter-spacing: 0.08em; background: #2563eb; color: #ffffff;"
+        onmouseover="this.style.background='#1d4ed8'"
+        onmouseout="this.style.background='#2563eb'"
+      >
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+        ENVIAR
+      </button>
+    </form>
+
+    <!-- Output -->
+    <div id="output" class="space-y-4 min-h-0"></div>
+
+    <!-- Footer -->
+    <footer class="text-center pt-4" style="border-top: 1px solid rgba(255,255,255,0.05);">
+      <p class="text-xs font-semibold" style="color: #64748b; font-size: 0.65rem; letter-spacing: 0.08em;">
+        MADE WITH ❤️ BY @OLIVEIRA-ANDRE · <span id="year"></span>
+      </p>
+    </footer>
+
+  </div>
+
+  <script type="module" src="./index.js"></script>
+</body>
+</html>
