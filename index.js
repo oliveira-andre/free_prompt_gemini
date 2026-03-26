@@ -296,7 +296,7 @@ function updateChatList() {
               ${isUser ? userIcon : aiIcon}
               ${isUser ? 'Você' : 'AI'}
             </div>
-            <div class="chat-bubble-content">${prompt.content}</div>
+            <div class="chat-bubble-content">${markdown.toHTML(prompt.content)}</div>
           </div>
         `;
       }).join('')}
