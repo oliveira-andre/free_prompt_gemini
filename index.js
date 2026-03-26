@@ -1,3 +1,4 @@
+const chats = Array.from(JSON.parse(localStorage.getItem('chats') || '[]'));
 
 const aiContext = {
   session: null,
@@ -60,7 +61,6 @@ async function onSubmitQuestion() {
   output.textContent = 'Processing your question...';
   const aiResponseChunks = await askAI(question, temperature, topK);
 
-  output.innerHTML = ""
   let fullText = ""
 
   for await (const chunk of aiResponseChunks) {
@@ -69,11 +69,22 @@ async function onSubmitQuestion() {
       }
       // console.log('Received chunk:', chunk);
       fullText += chunk;
+      output.innerHTML = markdown.toHTML(fullText);
   }
-  console.log(fullText);
-  output.innerHTML = markdown.toHTML(fullText);
+  // console.log(fullText);
+  // output.innerHTML = markdown.toHTML(fullText);
 
- toggleSendOrStopButton(false);
+  chats.filter(chat => chat.id === chats.length)[0].prompts.push(
+    {
+      role: 'assistant',
+      content: fullText,
+    }
+  );
+
+  localStorage.setItem('chats', JSON.stringify(chats));
+  updateChatList();
+
+  toggleSendOrStopButton(false);
 }
 
 function toggleSendOrStopButton(isGenerating) {
@@ -99,18 +110,27 @@ async function* askAI(question, temperature, topK) {
       aiContext.session.destroy();
   }
 
+  let chatsPrompts = [];
+  if (chats.length === 0) {
+    chats.push({
+      id: 1,
+      prompts: [
+        {
+          role: 'system',
+          content: 'You are an AI assistant that answers in a clear and objective way.'
+        }
+      ]
+    });
+    chatsPrompts = chats[0].prompts;
+  } else {
+    chatsPrompts = chats.filter(chat => chat.id === chats.length)[0].prompts;
+  }
+
   const session = await LanguageModel.create({
       expectedInputLanguages: ["en", "pt"],
       temperature: temperature,
       topK: topK,
-      initialPrompts: [
-          {
-              role: 'system', content: `
-              You are an AI assistant that answers in a clear and objective way.
-              `
-
-          },
-      ],
+      initialPrompts: chatsPrompts,
   });
 
   const responseStream = await session.promptStreaming(
@@ -124,6 +144,16 @@ async function* askAI(question, temperature, topK) {
           signal: aiContext.abortController.signal,
       }
   );
+
+  chats.filter(chat => chat.id === chats.length)[0].prompts.push(
+    {
+      role: 'user',
+      content: question,
+    }
+  );
+
+  localStorage.setItem('chats', JSON.stringify(chats));
+  updateChatList();
 
   for await (const chunk of responseStream) {
       if (aiContext.abortController.signal.aborted) {
@@ -193,12 +223,42 @@ async function checkRequirements() {
 
 }
 
+function updateChatList() {
+  const chatList = document.getElementById('chatList');
+
+  if (chats.length > 0) {
+    chatList.innerHTML = chats.reverse().map(chat => `
+      <div class="chat-item mb-4 p-2 cursor-pointer">
+        <div class="chat-header">
+          <span class="chat-title">${chat.prompts[chat.prompts.length - 1].content}</span>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  const chatHistory = document.getElementById('chat-history');
+  chatHistory.innerHTML = chats.filter(chat => chat.id === chats.length)[0].prompts.reverse().map(prompt => `
+    <div class="chat-item mb-4 p-2 cursor-pointer">
+      <div class="chat-header ${prompt.role === 'user' ? 'user-question' : 'ai-response'}">
+        ${prompt.role === 'user' ? `
+          <p>User Question:</p>
+        ` : `
+          <p>AI Response:</p>
+        `}
+        <p class="chat-title">${prompt.content}</p>
+      </div>
+    </div>
+  `).join('');
+}
+
 (async function main() {
     const tempInput = document.getElementById('temperature');
     const tempVal = document.getElementById('temp-value');
     const topKInput = document.getElementById('topK');
     const topKVal = document.getElementById('topk-value');
+    const chatSidebar = document.getElementById('chats');
 
+    updateChatList();
     function updateRange(input) {
       const min = +input.min || 0, max = +input.max || 2;
       const pct = ((+input.value - min) / (max - min)) * 100;
@@ -220,6 +280,34 @@ async function checkRequirements() {
     updateRange(tempInput);
 
   elements.year.textContent = new Date().getFullYear();
+
+
+  function toggleSidebar() {
+    chatSidebar.classList.contains('hidden') ? chatSidebar.classList.remove('hidden') : chatSidebar.classList.add('hidden');
+  }
+
+  document.querySelectorAll('.toggle-sidebar').forEach(element => {
+    element.addEventListener('click', toggleSidebar);
+  });
+
+  function newChat() {
+    chats.push({
+      id: chats.length + 1,
+      prompts: [
+        {
+          role: 'system',
+          content: 'You are an AI assistant that answers in a clear and objective way.'
+        }
+      ]
+    });
+    localStorage.setItem('chats', JSON.stringify(chats));
+    updateChatList();
+  }
+
+  document.querySelectorAll('.new-chat-button').forEach(element => {
+    element.addEventListener('click', newChat);
+  });
+  
 
   const reqErrors = await checkRequirements();
   if (reqErrors) {
