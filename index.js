@@ -223,18 +223,39 @@ async function checkRequirements() {
 
 }
 
+function selectChat(chatId) {
+  const currentChat = chats.filter(chat => chat.id === chatId)[0];
+  let allChats = chats.filter(chat => chat.id !== chatId);
+
+  if (allChats.length === 0 || !currentChat) {
+    return;
+  }
+
+  allChats.forEach(chat => {
+    chat.id > currentChat.id ? chat.id-- : chat.id;
+  });
+
+  currentChat.id = allChats.length + 1;
+  localStorage.setItem('chats', JSON.stringify([...allChats, currentChat]));
+  updateChatList();
+}
+
 function updateChatList() {
   const chatList = document.getElementById('chatList');
 
   if (chats.length > 0) {
     chatList.innerHTML = chats.reverse().map(chat => `
-      <div class="chat-item mb-4 p-2 cursor-pointer">
+      <div class="chat-item mb-4 p-2 cursor-pointer line-clamp-3" data-chat-id="${chat.id}">
         <div class="chat-header">
           <span class="chat-title">${chat.prompts[chat.prompts.length - 1].content}</span>
         </div>
       </div>
     `).join('');
   }
+
+  document.querySelectorAll('.chat-item').forEach(element => {
+    element.addEventListener('click', () => selectChat(parseInt(element.dataset.chatId)));
+  })
 
   const chatHistory = document.getElementById('chat-history');
   chatHistory.innerHTML = chats.filter(chat => chat.id === chats.length)[0].prompts.reverse().map(prompt => `
