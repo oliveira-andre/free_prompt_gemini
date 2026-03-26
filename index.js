@@ -244,32 +244,64 @@ function updateChatList() {
   const chatList = document.getElementById('chatList');
 
   if (chats.length > 0) {
-    chatList.innerHTML = chats.reverse().map(chat => `
-      <div class="chat-item mb-4 p-2 cursor-pointer line-clamp-3" data-chat-id="${chat.id}">
-        <div class="chat-header">
-          <span class="chat-title">${chat.prompts[chat.prompts.length - 1].content}</span>
+    chatList.innerHTML = [...chats].reverse().map(chat => {
+      const lastMsg = chat.prompts[chat.prompts.length - 1];
+      const preview = lastMsg.content.length > 60
+        ? lastMsg.content.slice(0, 60) + '...'
+        : lastMsg.content;
+      return `
+        <div class="sidebar-chat-item" data-chat-id="${chat.id}">
+          <div class="sidebar-chat-label">
+            <span class="dot-indicator"></span>
+            Chat #${chat.id}
+          </div>
+          <div class="sidebar-chat-preview">${preview}</div>
         </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
+  } else {
+    chatList.innerHTML = '<p class="sidebar-empty-msg">Nenhum chat encontrado</p>';
   }
 
-  document.querySelectorAll('.chat-item').forEach(element => {
+  document.querySelectorAll('.sidebar-chat-item').forEach(element => {
     element.addEventListener('click', () => selectChat(parseInt(element.dataset.chatId)));
-  })
+  });
 
+  const currentChat = chats.filter(chat => chat.id === chats.length)[0];
   const chatHistory = document.getElementById('chat-history');
-  chatHistory.innerHTML = chats.filter(chat => chat.id === chats.length)[0].prompts.reverse().map(prompt => `
-    <div class="chat-item mb-4 p-2 cursor-pointer">
-      <div class="chat-header ${prompt.role === 'user' ? 'user-question' : 'ai-response'}">
-        ${prompt.role === 'user' ? `
-          <p>User Question:</p>
-        ` : `
-          <p>AI Response:</p>
-        `}
-        <p class="chat-title">${prompt.content}</p>
-      </div>
+  if (!currentChat) {
+    chatHistory.innerHTML = '';
+    return;
+  }
+
+  const visiblePrompts = currentChat.prompts.filter(p => p.role !== 'system');
+  if (visiblePrompts.length === 0) {
+    chatHistory.innerHTML = '';
+    return;
+  }
+
+  const userIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+  const aiIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M8 12h8M12 8v8"/></svg>`;
+
+  chatHistory.innerHTML = `
+    <div class="chat-history-header">
+      <span class="label-tag">Histórico</span>
     </div>
-  `).join('');
+    <div class="chat-history-inner">
+      ${visiblePrompts.map(prompt => {
+        const isUser = prompt.role === 'user';
+        return `
+          <div class="chat-bubble ${isUser ? 'chat-bubble-user' : 'chat-bubble-ai'}">
+            <div class="chat-bubble-role">
+              ${isUser ? userIcon : aiIcon}
+              ${isUser ? 'Você' : 'AI'}
+            </div>
+            <div class="chat-bubble-content">${prompt.content}</div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
 }
 
 (async function main() {
@@ -303,13 +335,28 @@ function updateChatList() {
   elements.year.textContent = new Date().getFullYear();
 
 
+  const sidebarOverlay = document.getElementById('sidebar-overlay');
+
   function toggleSidebar() {
-    chatSidebar.classList.contains('hidden') ? chatSidebar.classList.remove('hidden') : chatSidebar.classList.add('hidden');
+    const isOpen = chatSidebar.classList.contains('open');
+    if (isOpen) {
+      chatSidebar.classList.remove('open');
+      sidebarOverlay.classList.remove('visible');
+      setTimeout(() => sidebarOverlay.classList.add('hidden'), 300);
+    } else {
+      sidebarOverlay.classList.remove('hidden');
+      requestAnimationFrame(() => {
+        chatSidebar.classList.add('open');
+        sidebarOverlay.classList.add('visible');
+      });
+    }
   }
 
   document.querySelectorAll('.toggle-sidebar').forEach(element => {
     element.addEventListener('click', toggleSidebar);
   });
+
+  sidebarOverlay.addEventListener('click', toggleSidebar);
 
   function newChat() {
     chats.push({
